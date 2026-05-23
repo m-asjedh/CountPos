@@ -20,7 +20,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className="min-h-screen bg-background font-sans antialiased">
         <ThemeProvider>
           {children}
-          <Toaster richColors position="top-right" />
+          <Toaster richColors position="top-right" className="print:hidden" />
         </ThemeProvider>
       </body>
     </html>

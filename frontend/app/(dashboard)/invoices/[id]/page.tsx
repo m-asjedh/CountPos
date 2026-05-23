@@ -5,10 +5,12 @@ import { useParams, useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { ArrowLeft, Printer, CreditCard, CheckCircle, X } from 'lucide-react';
 import api from '@/src/lib/api';
-import { formatCurrency, getStatusColor } from '@/src/lib/utils';
+import { getStatusColor } from '@/src/lib/utils';
+import { useCompanySettings } from '@/src/providers/company-settings-provider';
 import type { Invoice } from '@/src/types';
 
 export default function InvoiceDetailPage() {
+  const { formatMoney } = useCompanySettings();
   const { id } = useParams();
   const router = useRouter();
   const [invoice, setInvoice] = useState<Invoice | null>(null);
@@ -56,9 +58,9 @@ export default function InvoiceDetailPage() {
   const profitMargin = invoice.totalAmount > 0 ? ((invoice.profit / invoice.totalAmount) * 100).toFixed(1) : '0';
 
   return (
-    <div className="max-w-3xl mx-auto space-y-5">
-      {/* Header */}
-      <div className="flex items-center gap-4">
+    <div className="max-w-3xl mx-auto space-y-5 print:max-w-none print:mx-0">
+      {/* Header — hidden when printing */}
+      <div className="flex items-center gap-4 print:hidden">
         <button onClick={() => router.back()} className="w-8 h-8 rounded-lg border border-border flex items-center justify-center hover:bg-accent transition-all">
           <ArrowLeft className="w-4 h-4" />
         </button>
@@ -78,8 +80,11 @@ export default function InvoiceDetailPage() {
         </div>
       </div>
 
-      {/* Invoice card */}
-      <div className="bg-card border border-border rounded-xl overflow-hidden print:shadow-none print:border-none">
+      {/* Invoice card — only this prints */}
+      <div
+        id="invoice-print"
+        className="bg-card border border-border rounded-xl overflow-hidden print:shadow-none print:border print:border-black/20 print:rounded-none"
+      >
         {/* Status bar */}
         <div className={`px-6 py-3 flex items-center justify-between ${invoice.status === 'PAID' ? 'bg-green-50 dark:bg-green-950/30' : invoice.status === 'CANCELLED' ? 'bg-muted' : 'bg-orange-50 dark:bg-orange-950/30'}`}>
           <div className="flex items-center gap-2">
@@ -133,11 +138,11 @@ export default function InvoiceDetailPage() {
                     <p className="text-xs text-muted-foreground">{item.sku} • {item.unit}</p>
                   </td>
                   <td className="py-3 text-center text-muted-foreground">{item.quantity}</td>
-                  <td className="py-3 text-right text-muted-foreground">{formatCurrency(Number(item.sellingPrice))}</td>
+                  <td className="py-3 text-right text-muted-foreground">{formatMoney(Number(item.sellingPrice))}</td>
                   <td className="py-3 text-right text-green-600 dark:text-green-400">
-                    {Number(item.discountAmount) > 0 ? `-${formatCurrency(Number(item.discountAmount))}` : '-'}
+                    {Number(item.discountAmount) > 0 ? `-${formatMoney(Number(item.discountAmount))}` : '-'}
                   </td>
-                  <td className="py-3 text-right font-medium">{formatCurrency(Number(item.lineTotal))}</td>
+                  <td className="py-3 text-right font-medium">{formatMoney(Number(item.lineTotal))}</td>
                 </tr>
               ))}
             </tbody>
@@ -147,33 +152,33 @@ export default function InvoiceDetailPage() {
           <div className="border-t border-border pt-4 space-y-2 text-sm">
             <div className="flex justify-between text-muted-foreground">
               <span>Subtotal</span>
-              <span>{formatCurrency(Number(invoice.subtotal))}</span>
+              <span>{formatMoney(Number(invoice.subtotal))}</span>
             </div>
             {Number(invoice.discountAmount) > 0 && (
               <div className="flex justify-between text-green-600 dark:text-green-400">
                 <span>Discount</span>
-                <span>-{formatCurrency(Number(invoice.discountAmount))}</span>
+                <span>-{formatMoney(Number(invoice.discountAmount))}</span>
               </div>
             )}
             {Number(invoice.taxAmount) > 0 && (
               <div className="flex justify-between text-muted-foreground">
                 <span>Tax</span>
-                <span>{formatCurrency(Number(invoice.taxAmount))}</span>
+                <span>{formatMoney(Number(invoice.taxAmount))}</span>
               </div>
             )}
             <div className="flex justify-between font-bold text-base border-t border-border pt-2">
               <span>Total</span>
-              <span>{formatCurrency(Number(invoice.totalAmount))}</span>
+              <span>{formatMoney(Number(invoice.totalAmount))}</span>
             </div>
             {invoice.paymentMethod === 'CASH' && Number(invoice.cashReceived) > 0 && (
               <>
                 <div className="flex justify-between text-muted-foreground">
                   <span>Cash Received</span>
-                  <span>{formatCurrency(Number(invoice.cashReceived))}</span>
+                  <span>{formatMoney(Number(invoice.cashReceived))}</span>
                 </div>
                 <div className="flex justify-between text-blue-600 dark:text-blue-400 font-medium">
                   <span>Change</span>
-                  <span>{formatCurrency(Number(invoice.changeGiven))}</span>
+                  <span>{formatMoney(Number(invoice.changeGiven))}</span>
                 </div>
               </>
             )}
@@ -181,12 +186,12 @@ export default function InvoiceDetailPage() {
               <>
                 <div className="flex justify-between text-green-600 dark:text-green-400">
                   <span>Paid</span>
-                  <span>{formatCurrency(Number(invoice.paidAmount))}</span>
+                  <span>{formatMoney(Number(invoice.paidAmount))}</span>
                 </div>
                 {Number(invoice.balanceAmount) > 0 && (
                   <div className="flex justify-between text-orange-500 font-medium">
                     <span>Balance Due</span>
-                    <span>{formatCurrency(Number(invoice.balanceAmount))}</span>
+                    <span>{formatMoney(Number(invoice.balanceAmount))}</span>
                   </div>
                 )}
               </>
@@ -197,7 +202,7 @@ export default function InvoiceDetailPage() {
 
       {/* Profit info (hidden from print) */}
       <div className="bg-muted/30 border border-border rounded-xl p-4 print:hidden">
-        <p className="text-sm font-medium text-muted-foreground">Profit: <span className="text-green-600 dark:text-green-400 font-semibold">{formatCurrency(Number(invoice.profit))}</span> ({profitMargin}% margin)</p>
+        <p className="text-sm font-medium text-muted-foreground">Profit: <span className="text-green-600 dark:text-green-400 font-semibold">{formatMoney(Number(invoice.profit))}</span> ({profitMargin}% margin)</p>
       </div>
 
       {/* Pay credit modal */}
@@ -205,7 +210,7 @@ export default function InvoiceDetailPage() {
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-card border border-border rounded-2xl w-full max-w-sm shadow-xl p-6">
             <h3 className="font-semibold mb-2">Record Payment</h3>
-            <p className="text-sm text-muted-foreground mb-4">Balance due: {formatCurrency(Number(invoice.balanceAmount))}</p>
+            <p className="text-sm text-muted-foreground mb-4">Balance due: {formatMoney(Number(invoice.balanceAmount))}</p>
             <input type="number" value={payAmount} onChange={(e) => setPayAmount(e.target.value)} placeholder="Amount" max={Number(invoice.balanceAmount)} className="w-full px-3 py-2.5 border border-input rounded-lg bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring" />
             <div className="flex gap-3 mt-4">
               <button onClick={() => setShowPayModal(false)} className="flex-1 py-2.5 bg-secondary text-secondary-foreground rounded-lg font-medium text-sm hover:bg-secondary/80 transition-all">Cancel</button>

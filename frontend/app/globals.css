@@ -154,3 +154,38 @@
     scrollbar-width: none;
   }
 }
+
+/* Print: invoice/receipt only — no sidebar, header, or app chrome */
+@media print {
+  @page {
+    margin: 12mm;
+    size: auto;
+  }
+
+  body {
+    background: white !important;
+    color: black !important;
+  }
+
+  /* Sonner toasts */
+  [data-sonner-toaster],
+  [data-sonner-toast] {
+    display: none !important;
+  }
+
+  /* Force invoice content full width */
+  #invoice-print {
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    box-shadow: none !important;
+  }
+
+  #invoice-print table {
+    page-break-inside: avoid;
+  }
+
+  #invoice-print tr {
+    page-break-inside: avoid;
+  }
+}

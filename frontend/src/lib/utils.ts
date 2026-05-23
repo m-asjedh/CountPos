@@ -5,12 +5,41 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
+/** Coerce Prisma/API decimals (string) to number for display. */
+export function toNumber(value: unknown): number {
+  const n = Number(value);
+  return Number.isFinite(n) ? n : 0;
+}
+
 export function formatCurrency(
-  amount: number,
+  amount: number | string | null | undefined,
   symbol = '$',
   decimals = 2,
 ): string {
-  return `${symbol}${amount.toFixed(decimals).replace(/\B(?=(\d{3})+(?!\d))/g, ',')}`;
+  const n = toNumber(amount);
+  return `${symbol}${n.toFixed(decimals).replace(/\B(?=(\d{3})+(?!\d))/g, ',')}`;
+}
+
+/** Preview price code mapping for settings (e.g. BL → 12). */
+export function buildPriceCodePreview(word: string, digits: string): string {
+  const w = word.trim().toUpperCase();
+  const d = digits.trim();
+  if (!w || !d || w.length !== d.length) return '';
+
+  const map = new Map<string, string>();
+  for (let i = 0; i < w.length; i++) map.set(w[i], d[i]);
+
+  const examples: string[] = [];
+  if (w.length >= 2) {
+    const sample = w.slice(0, 2);
+    examples.push(`${sample} → ${sample.split('').map((c) => map.get(c) ?? '?').join('')}`);
+  }
+  if (w.length >= 4) {
+    const sample = w.slice(0, 4);
+    examples.push(`${sample} → ${sample.split('').map((c) => map.get(c) ?? '?').join('')}`);
+  }
+
+  return examples.join(' · ');
 }
 
 export function formatDate(dateString: string, format = 'MM/DD/YYYY'): string {

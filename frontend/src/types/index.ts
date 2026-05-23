@@ -39,6 +39,8 @@ export interface CompanySettings {
   receiptFooter?: string;
   timezone: string;
   dateFormat: string;
+  priceCodeWord?: string | null;
+  priceCodeDigits?: string | null;
 }
 
 export interface Product {

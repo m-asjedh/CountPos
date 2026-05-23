@@ -5,10 +5,12 @@ import Link from 'next/link';
 import { toast } from 'sonner';
 import { Search, FileText, Plus, ExternalLink } from 'lucide-react';
 import api from '@/src/lib/api';
-import { formatCurrency, getStatusColor } from '@/src/lib/utils';
+import { getStatusColor } from '@/src/lib/utils';
+import { useCompanySettings } from '@/src/providers/company-settings-provider';
 import type { Invoice } from '@/src/types';
 
 export default function InvoicesPage() {
+  const { formatMoney } = useCompanySettings();
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -49,7 +51,7 @@ export default function InvoicesPage() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold">Invoices</h1>
-          <p className="text-sm text-muted-foreground mt-1">{total} invoices • {formatCurrency(totalSales)} shown</p>
+          <p className="text-sm text-muted-foreground mt-1">{total} invoices • {formatMoney(totalSales)} shown</p>
         </div>
         <Link href="/billing" className="flex items-center gap-1.5 px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 transition-all">
           <Plus className="w-4 h-4" /> New Invoice
@@ -112,9 +114,9 @@ export default function InvoicesPage() {
                         {inv.paymentMethod}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-right font-medium">{formatCurrency(Number(inv.totalAmount))}</td>
-                    <td className="px-4 py-3 text-right text-green-600 dark:text-green-400">{formatCurrency(Number(inv.paidAmount))}</td>
-                    <td className="px-4 py-3 text-right text-orange-500">{Number(inv.balanceAmount) > 0 ? formatCurrency(Number(inv.balanceAmount)) : '-'}</td>
+                    <td className="px-4 py-3 text-right font-medium">{formatMoney(Number(inv.totalAmount))}</td>
+                    <td className="px-4 py-3 text-right text-green-600 dark:text-green-400">{formatMoney(Number(inv.paidAmount))}</td>
+                    <td className="px-4 py-3 text-right text-orange-500">{Number(inv.balanceAmount) > 0 ? formatMoney(Number(inv.balanceAmount)) : '-'}</td>
                     <td className="px-4 py-3">
                       <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${getStatusColor(inv.status)}`}>{inv.status}</span>
                     </td>

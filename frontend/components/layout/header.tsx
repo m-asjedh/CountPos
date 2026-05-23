@@ -72,7 +72,7 @@ export function Header() {
   };
 
   return (
-    <header className="h-14 bg-card border-b border-border flex items-center justify-between px-4 gap-4">
+    <header className="h-14 bg-card border-b border-border flex items-center justify-between px-4 gap-4 print:hidden">
       <div className="flex-1" />
 
       <div className="flex items-center gap-2">

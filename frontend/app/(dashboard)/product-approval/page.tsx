@@ -4,10 +4,11 @@ import { useState, useEffect } from 'react';
 import { toast } from 'sonner';
 import { CheckCircle, XCircle, Package, Eye, Clock } from 'lucide-react';
 import api from '@/src/lib/api';
-import { formatCurrency } from '@/src/lib/utils';
+import { useCompanySettings } from '@/src/providers/company-settings-provider';
 import type { Product } from '@/src/types';
 
 export default function ProductApprovalPage() {
+  const { formatMoney } = useCompanySettings();
   const [products, setProducts] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
@@ -84,8 +85,8 @@ export default function ProductApprovalPage() {
                       <span>SKU: {product.sku}</span>
                       {product.barcode && <span>Barcode: {product.barcode}</span>}
                       {product.category && <span>Category: {product.category.name}</span>}
-                      <span>Cost: {formatCurrency(Number(product.costPrice))}</span>
-                      <span>Price: {formatCurrency(Number(product.sellingPrice))}</span>
+                      <span>Cost: {formatMoney(Number(product.costPrice))}</span>
+                      <span>Price: {formatMoney(Number(product.sellingPrice))}</span>
                       <span>Stock: {product.openingStock} {product.unit}</span>
                     </div>
                     <div className="flex items-center gap-1.5 mt-2 text-xs text-muted-foreground">

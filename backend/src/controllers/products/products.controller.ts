@@ -14,7 +14,7 @@ import {
   UploadedFile,
   ParseFilePipe,
   MaxFileSizeValidator,
-  FileTypeValidator,
+  BadRequestException,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { JwtAuthGuard } from '../../guards/jwt-auth.guard';
@@ -138,12 +138,22 @@ export class ProductsController {
     )
     file: Express.Multer.File,
   ) {
+    const ext = file.originalname?.toLowerCase() ?? '';
+    if (!ext.endsWith('.csv') && !ext.endsWith('.xlsx') && !ext.endsWith('.xls')) {
+      throw new BadRequestException('Only .csv, .xlsx, and .xls files are supported');
+    }
+
     const result = await this.importProductsCsvService.execute(
       user.companyId,
       file.buffer,
       user.id,
       user.role as import('@prisma/client').UserRole,
+      file.originalname,
     );
-    return { success: true, data: result, message: 'CSV imported successfully' };
+    return {
+      success: true,
+      data: result,
+      message: `Import complete: ${result.created} created, ${result.skipped} skipped`,
+    };
   }
 }

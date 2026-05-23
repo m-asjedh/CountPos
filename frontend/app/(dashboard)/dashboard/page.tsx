@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/src/providers/auth-provider';
-import { formatCurrency } from '@/src/lib/utils';
+import { useCompanySettings } from '@/src/providers/company-settings-provider';
 import type { DashboardSummary, Invoice } from '@/src/types';
 import api from '@/src/lib/api';
 import {
@@ -53,6 +53,7 @@ interface TopProduct {
 }
 
 export default function DashboardPage() {
+  const { formatMoney } = useCompanySettings();
   const { user } = useAuth();
   const [period, setPeriod] = useState('today');
   const [summary, setSummary] = useState<DashboardSummary | null>(null);
@@ -85,13 +86,11 @@ export default function DashboardPage() {
     }
   };
 
-  const currency = '$';
-
   const statCards = summary
     ? [
         {
           label: 'Total Sales',
-          value: formatCurrency(summary.sales, currency),
+          value: formatMoney(summary.sales),
           icon: DollarSign,
           color: 'text-blue-500',
           bg: 'bg-blue-50 dark:bg-blue-950/30',
@@ -99,7 +98,7 @@ export default function DashboardPage() {
         },
         {
           label: 'Profit',
-          value: formatCurrency(summary.profit, currency),
+          value: formatMoney(summary.profit),
           icon: TrendingUp,
           color: 'text-green-500',
           bg: 'bg-green-50 dark:bg-green-950/30',
@@ -107,14 +106,14 @@ export default function DashboardPage() {
         },
         {
           label: 'Cash Received',
-          value: formatCurrency(summary.receivedCash, currency),
+          value: formatMoney(summary.receivedCash),
           icon: Banknote,
           color: 'text-emerald-500',
           bg: 'bg-emerald-50 dark:bg-emerald-950/30',
         },
         {
           label: 'Pending Credit',
-          value: formatCurrency(summary.pendingCredit, currency),
+          value: formatMoney(summary.pendingCredit),
           icon: CreditCard,
           color: 'text-orange-500',
           bg: 'bg-orange-50 dark:bg-orange-950/30',
@@ -344,7 +343,7 @@ export default function DashboardPage() {
                         {inv.paymentMethod}
                       </span>
                     </td>
-                    <td className="px-5 py-3 text-right font-medium">{formatCurrency(inv.totalAmount, currency)}</td>
+                    <td className="px-5 py-3 text-right font-medium">{formatMoney(inv.totalAmount)}</td>
                     <td className="px-5 py-3">
                       <span className={`text-xs font-medium ${statusColors[inv.status] || ''}`}>{inv.status}</span>
                     </td>

@@ -7,7 +7,8 @@ import {
   Edit, Trash2, Eye, CheckCircle, Clock, XCircle, RefreshCw,
 } from 'lucide-react';
 import api from '@/src/lib/api';
-import { formatCurrency, getStatusColor } from '@/src/lib/utils';
+import { getStatusColor } from '@/src/lib/utils';
+import { useCompanySettings } from '@/src/providers/company-settings-provider';
 import type { Product, Category, Supplier } from '@/src/types';
 import { useAuth } from '@/src/providers/auth-provider';
 
@@ -20,6 +21,7 @@ const statusOptions = [
 ];
 
 export default function ProductsPage() {
+  const { formatMoney } = useCompanySettings();
   const { user } = useAuth();
   const isAdmin = user && ['OWNER', 'ADMIN', 'MANAGER'].includes(user.role);
 
@@ -109,10 +111,10 @@ export default function ProductsPage() {
             <>
               <label className="flex items-center gap-1.5 px-3 py-2 border border-border rounded-lg text-sm text-muted-foreground hover:text-foreground hover:bg-accent cursor-pointer transition-all">
                 <Upload className="w-4 h-4" />
-                Import CSV
+                Import CSV / Excel
                 <input
                   type="file"
-                  accept=".csv"
+                  accept=".csv,.xlsx,.xls"
                   className="hidden"
                   onChange={async (e) => {
                     const file = e.target.files?.[0];
@@ -123,10 +125,17 @@ export default function ProductsPage() {
                       const res = await api.post('/products/import/csv', formData, {
                         headers: { 'Content-Type': 'multipart/form-data' },
                       });
-                      toast.success(`Imported: ${res.data.data.created} products`);
+                      const { created, skipped, errors } = res.data.data;
+                      toast.success(`Imported ${created} product(s)${skipped ? `, ${skipped} skipped` : ''}`);
+                      if (errors?.length) {
+                        toast.warning(errors.slice(0, 3).join(' · ') + (errors.length > 3 ? '…' : ''));
+                      }
                       fetchProducts();
-                    } catch {
-                      toast.error('Import failed');
+                    } catch (err: unknown) {
+                      const msg =
+                        (err as { response?: { data?: { message?: string | string[] } } })?.response?.data
+                          ?.message;
+                      toast.error(Array.isArray(msg) ? msg.join(', ') : msg || 'Import failed');
                     }
                     e.target.value = '';
                   }}
@@ -221,8 +230,8 @@ export default function ProductsPage() {
                     </td>
                     <td className="px-4 py-3 font-mono text-xs text-muted-foreground">{product.sku}</td>
                     <td className="px-4 py-3 text-muted-foreground">{product.category?.name || '-'}</td>
-                    <td className="px-4 py-3 text-right text-muted-foreground">{formatCurrency(Number(product.costPrice))}</td>
-                    <td className="px-4 py-3 text-right font-medium">{formatCurrency(Number(product.sellingPrice))}</td>
+                    <td className="px-4 py-3 text-right text-muted-foreground">{formatMoney(Number(product.costPrice))}</td>
+                    <td className="px-4 py-3 text-right font-medium">{formatMoney(Number(product.sellingPrice))}</td>
                     <td className="px-4 py-3 text-right">
                       <span className={`font-medium ${product.currentStock === 0 ? 'text-destructive' : product.currentStock <= product.lowStockThreshold ? 'text-orange-500' : 'text-foreground'}`}>
                         {product.currentStock}

@@ -4,10 +4,11 @@ import { useState, useEffect, useCallback } from 'react';
 import { toast } from 'sonner';
 import { Plus, Search, Users, Edit, CreditCard, X } from 'lucide-react';
 import api from '@/src/lib/api';
-import { formatCurrency } from '@/src/lib/utils';
+import { useCompanySettings } from '@/src/providers/company-settings-provider';
 import type { Customer } from '@/src/types';
 
 export default function CustomersPage() {
+  const { formatMoney } = useCompanySettings();
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -41,7 +42,7 @@ export default function CustomersPage() {
         <div>
           <h1 className="text-2xl font-bold">Customers</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            {customers.length} customers • Total credit: {formatCurrency(totalCreditBalance)}
+            {customers.length} customers • Total credit: {formatMoney(totalCreditBalance)}
           </p>
         </div>
         <button onClick={() => { setEditCustomer(null); setShowForm(true); }} className="flex items-center gap-1.5 px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 transition-all">
@@ -84,10 +85,10 @@ export default function CustomersPage() {
                     <div>{c.phone || '-'}</div>
                     <div className="text-xs">{c.email || ''}</div>
                   </td>
-                  <td className="px-4 py-3 text-right">{formatCurrency(Number(c.creditLimit))}</td>
+                  <td className="px-4 py-3 text-right">{formatMoney(Number(c.creditLimit))}</td>
                   <td className="px-4 py-3 text-right">
                     <span className={Number(c.creditBalance) > 0 ? 'text-orange-600 dark:text-orange-400 font-medium' : 'text-muted-foreground'}>
-                      {formatCurrency(Number(c.creditBalance))}
+                      {formatMoney(Number(c.creditBalance))}
                     </span>
                   </td>
                   <td className="px-4 py-3">
@@ -224,7 +225,7 @@ function SettleCreditModal({ customer, onClose, onSaved }: { customer: Customer;
         </div>
         <div className="bg-muted rounded-lg p-3 mb-4">
           <p className="text-sm font-medium">{customer.name}</p>
-          <p className="text-sm text-orange-600 dark:text-orange-400">Balance due: {formatCurrency(Number(customer.creditBalance))}</p>
+          <p className="text-sm text-orange-600 dark:text-orange-400">Balance due: {formatMoney(Number(customer.creditBalance))}</p>
         </div>
         <input type="number" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="Amount to settle" max={Number(customer.creditBalance)} className="w-full px-3 py-2.5 border border-input rounded-lg bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring" />
         <div className="flex gap-3 mt-4">

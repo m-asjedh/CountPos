@@ -1,4 +1,4 @@
-import { Controller, Get, Patch, Body, UseGuards } from '@nestjs/common';
+import { Controller, Get, Patch, Body, UseGuards, BadRequestException } from '@nestjs/common';
 import { JwtAuthGuard } from '../../guards/jwt-auth.guard';
 import { RolesGuard } from '../../guards/roles.guard';
 import { Roles } from '../../decorators/roles.decorator';
@@ -30,6 +30,8 @@ class UpdateSettingsDto {
   @IsOptional() @IsString() receiptFooter?: string;
   @IsOptional() @IsString() timezone?: string;
   @IsOptional() @IsString() dateFormat?: string;
+  @IsOptional() @IsString() priceCodeWord?: string;
+  @IsOptional() @IsString() priceCodeDigits?: string;
 }
 
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -67,9 +69,34 @@ export class CompaniesController {
   @Patch('settings')
   @Roles('OWNER', 'ADMIN')
   async updateSettings(@CurrentUser() user: RequestUser, @Body() dto: UpdateSettingsDto) {
+    if (dto.priceCodeWord !== undefined || dto.priceCodeDigits !== undefined) {
+      const word = (dto.priceCodeWord ?? '').trim().toUpperCase();
+      const digits = (dto.priceCodeDigits ?? '').trim();
+      if (word || digits) {
+        if (!word || !digits) {
+          throw new BadRequestException('Both price code word and digits are required when using price codes');
+        }
+        if (word.length !== digits.length) {
+          throw new BadRequestException(
+            `Price code word and digits must be the same length (${word.length} vs ${digits.length})`,
+          );
+        }
+        if (!/^[A-Z]+$/.test(word)) {
+          throw new BadRequestException('Price code word must contain only letters A–Z');
+        }
+        if (!/^\d+$/.test(digits)) {
+          throw new BadRequestException('Price code digits must contain only numbers 0–9');
+        }
+      }
+    }
+
     const updated = await this.prisma.companySettings.update({
       where: { companyId: user.companyId },
-      data: dto,
+      data: {
+        ...dto,
+        priceCodeWord: dto.priceCodeWord?.trim().toUpperCase() || null,
+        priceCodeDigits: dto.priceCodeDigits?.trim() || null,
+      },
     });
 
     await this.prisma.auditLog.create({

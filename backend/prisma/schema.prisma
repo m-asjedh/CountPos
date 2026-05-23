@@ -140,6 +140,10 @@ model CompanySettings {
   receiptFooter       String?
   timezone            String   @default("UTC")
   dateFormat          String   @default("MM/DD/YYYY")
+  /// Letter sequence for encoded import prices (e.g. BLACKSTONE)
+  priceCodeWord       String?
+  /// Digit sequence aligned 1:1 with priceCodeWord (e.g. 1234567890)
+  priceCodeDigits     String?
   createdAt           DateTime @default(now())
   updatedAt           DateTime @updatedAt
 

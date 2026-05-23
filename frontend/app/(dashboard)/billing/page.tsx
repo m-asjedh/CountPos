@@ -8,7 +8,7 @@ import {
   DollarSign, CreditCard, Printer, Check, Barcode, AlertCircle,
 } from 'lucide-react';
 import api from '@/src/lib/api';
-import { formatCurrency } from '@/src/lib/utils';
+import { useCompanySettings } from '@/src/providers/company-settings-provider';
 import type { Product, Customer, CartItem } from '@/src/types';
 
 interface HeldInvoice {
@@ -19,6 +19,7 @@ interface HeldInvoice {
 }
 
 export default function BillingPage() {
+  const { formatMoney, settings } = useCompanySettings();
   const router = useRouter();
   const searchRef = useRef<HTMLInputElement>(null);
   const [cart, setCart] = useState<CartItem[]>([]);
@@ -35,7 +36,8 @@ export default function BillingPage() {
   const [showCheckout, setShowCheckout] = useState(false);
   const [heldInvoices, setHeldInvoices] = useState<HeldInvoice[]>([]);
   const [showHeld, setShowHeld] = useState(false);
-  const [settings] = useState({ currency: '$', taxEnabled: false, taxRate: 0 });
+  const taxEnabled = settings?.taxEnabled ?? false;
+  const taxRate = Number(settings?.taxRate ?? 0);
 
   useEffect(() => {
     searchRef.current?.focus();
@@ -153,7 +155,7 @@ export default function BillingPage() {
 
   const subtotal = cart.reduce((sum, i) => sum + i.sellingPrice * i.quantity, 0);
   const totalDiscount = cart.reduce((sum, i) => sum + i.discountAmount, 0);
-  const taxAmount = settings.taxEnabled ? (subtotal - totalDiscount) * (settings.taxRate / 100) : 0;
+  const taxAmount = taxEnabled ? (subtotal - totalDiscount) * (taxRate / 100) : 0;
   const grandTotal = subtotal - totalDiscount + taxAmount;
   const cashReceivedNum = parseFloat(cashReceived) || 0;
   const change = Math.max(0, cashReceivedNum - grandTotal);
@@ -266,7 +268,7 @@ export default function BillingPage() {
                     <div className="text-xs text-muted-foreground">{product.sku} • {product.unit}</div>
                   </div>
                   <div className="text-right">
-                    <div className="font-semibold text-sm text-foreground">{formatCurrency(Number(product.sellingPrice))}</div>
+                    <div className="font-semibold text-sm text-foreground">{formatMoney(Number(product.sellingPrice))}</div>
                     <div className={`text-xs ${product.currentStock <= 5 ? 'text-orange-500' : 'text-muted-foreground'}`}>
                       Stock: {product.currentStock}
                     </div>
@@ -316,7 +318,7 @@ export default function BillingPage() {
                   <div key={item.productId} className="px-4 py-3 flex items-center gap-3">
                     <div className="flex-1 min-w-0">
                       <p className="font-medium text-sm text-foreground truncate">{item.name}</p>
-                      <p className="text-xs text-muted-foreground">{item.sku} • {formatCurrency(item.sellingPrice)}/{item.unit}</p>
+                      <p className="text-xs text-muted-foreground">{item.sku} • {formatMoney(item.sellingPrice)}/{item.unit}</p>
                       {item.discountEnabled && (
                         <div className="flex items-center gap-1 mt-1">
                           <input
@@ -342,9 +344,9 @@ export default function BillingPage() {
                       </button>
                     </div>
                     <div className="text-right min-w-[70px]">
-                      <p className="font-semibold text-sm">{formatCurrency(item.lineTotal)}</p>
+                      <p className="font-semibold text-sm">{formatMoney(item.lineTotal)}</p>
                       {item.discountAmount > 0 && (
-                        <p className="text-xs text-green-600 dark:text-green-400">-{formatCurrency(item.discountAmount)}</p>
+                        <p className="text-xs text-green-600 dark:text-green-400">-{formatMoney(item.discountAmount)}</p>
                       )}
                     </div>
                     <button onClick={() => removeItem(item.productId)} className="text-muted-foreground hover:text-destructive transition-colors">
@@ -379,7 +381,7 @@ export default function BillingPage() {
                 <p className="font-medium text-sm">{selectedCustomer.name}</p>
                 <p className="text-xs text-muted-foreground">{selectedCustomer.phone}</p>
                 {selectedCustomer.creditBalance > 0 && (
-                  <p className="text-xs text-orange-500">Credit due: {formatCurrency(selectedCustomer.creditBalance)}</p>
+                  <p className="text-xs text-orange-500">Credit due: {formatMoney(selectedCustomer.creditBalance)}</p>
                 )}
               </div>
             </div>
@@ -418,23 +420,23 @@ export default function BillingPage() {
           <div className="space-y-2 text-sm">
             <div className="flex justify-between text-muted-foreground">
               <span>Subtotal ({cart.reduce((s, i) => s + i.quantity, 0)} items)</span>
-              <span>{formatCurrency(subtotal)}</span>
+              <span>{formatMoney(subtotal)}</span>
             </div>
             {totalDiscount > 0 && (
               <div className="flex justify-between text-green-600 dark:text-green-400">
                 <span>Discount</span>
-                <span>-{formatCurrency(totalDiscount)}</span>
+                <span>-{formatMoney(totalDiscount)}</span>
               </div>
             )}
             {taxAmount > 0 && (
               <div className="flex justify-between text-muted-foreground">
-                <span>Tax ({settings.taxRate}%)</span>
-                <span>{formatCurrency(taxAmount)}</span>
+                <span>Tax ({taxRate}%)</span>
+                <span>{formatMoney(taxAmount)}</span>
               </div>
             )}
             <div className="border-t border-border pt-2 flex justify-between font-bold text-base">
               <span>Total</span>
-              <span className="text-primary">{formatCurrency(grandTotal)}</span>
+              <span className="text-primary">{formatMoney(grandTotal)}</span>
             </div>
           </div>
 
@@ -470,7 +472,7 @@ export default function BillingPage() {
               {cashReceivedNum >= grandTotal && cashReceivedNum > 0 && (
                 <div className="mt-2 flex justify-between text-sm font-medium text-green-600 dark:text-green-400">
                   <span>Change</span>
-                  <span>{formatCurrency(change)}</span>
+                  <span>{formatMoney(change)}</span>
                 </div>
               )}
             </div>
@@ -504,7 +506,7 @@ export default function BillingPage() {
             ) : (
               <>
                 <Check className="w-4 h-4" />
-                {paymentMethod === 'CASH' ? `Charge ${formatCurrency(grandTotal)}` : 'Create Credit Invoice'}
+                {paymentMethod === 'CASH' ? `Charge ${formatMoney(grandTotal)}` : 'Create Credit Invoice'}
               </>
             )}
           </button>

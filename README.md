@@ -554,15 +554,35 @@ Toggle is available in the dashboard layout.
 
 ---
 
-## CSV import / export
+## CSV / Excel import & price code words
 
-**Import** (`POST /api/v1/products/import/csv`):
+**Import** (`POST /api/v1/products/import/csv`) — accepts **`.csv`**, **`.xlsx`**, and **`.xls`**.
 
-Supported columns include:
+### Retail sheet format (e.g. hardware store export)
 
-- Product Name, SKU, Barcode, Category, Supplier  
-- Cost Price, Selling Price, Stock Quantity, Reorder Level  
-- Unit, Expiry Date, Shelf Number, Shelf Row  
+| Column | Maps to |
+|--------|---------|
+| Uni Code | SKU |
+| Product name | Name |
+| Quantity | Stock |
+| Price | Cost price |
+| Discount | Max discount % (optional) |
+
+### Standard CSV format
+
+Product Name, SKU, Cost Price, Selling Price, Stock Quantity, Category, Supplier, etc.
+
+### Encoded prices (admin-configured)
+
+In **Settings → Price code words**, each company sets a letter→digit map:
+
+```
+BLACKSTONE  →  1234567890
+```
+
+Then import price `BL` decodes to cost **12**. Plain values like `10530/=` import as numeric prices.
+
+Use a code word long enough to include **every letter** your sheet uses (e.g. if codes contain `X`, add `X` to the word and a matching digit).
 
 **Export:** Sales and report exports via reports module (`GET /reports/export/sales`).
 
