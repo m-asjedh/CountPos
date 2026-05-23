@@ -31,12 +31,12 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
   if (!isAuthenticated) return null;
 
   return (
-    <div className="flex h-screen overflow-hidden bg-background print:block print:h-auto print:overflow-visible">
+    <div className="flex h-screen overflow-hidden bg-muted/40 dark:bg-background print:block print:h-auto print:overflow-visible">
       <Sidebar />
-      <div className="flex-1 flex flex-col overflow-hidden print:w-full print:block print:overflow-visible">
+      <div className="flex min-w-0 flex-1 flex-col overflow-hidden print:block print:w-full print:overflow-visible">
         <Header />
         <main className="flex-1 overflow-y-auto print:overflow-visible">
-          <div className="p-6 print:p-0">{children}</div>
+          <div className="p-4 md:p-6 print:p-0">{children}</div>
         </main>
       </div>
     </div>

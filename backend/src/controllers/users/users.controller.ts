@@ -33,8 +33,16 @@ export class UsersController {
   @Post()
   @HttpCode(HttpStatus.CREATED)
   async create(@CurrentUser() user: RequestUser, @Body() dto: CreateUserDto) {
-    const result = await this.createUserService.execute(user.companyId, dto, user.id);
-    return { success: true, data: result, message: 'Staff created successfully' };
+    const result = await this.createUserService.execute(
+      user.companyId,
+      dto,
+      user.id,
+    );
+    return {
+      success: true,
+      data: result,
+      message: 'Staff created successfully',
+    };
   }
 
   @Roles('OWNER', 'ADMIN', 'MANAGER')
@@ -57,7 +65,16 @@ export class UsersController {
     @Param('id') id: string,
     @Body() dto: UpdateUserDto,
   ) {
-    const result = await this.updateUserService.execute(user.companyId, id, dto, user.id);
-    return { success: true, data: result, message: 'User updated successfully' };
+    const result = await this.updateUserService.execute(
+      user.companyId,
+      id,
+      dto,
+      user.id,
+    );
+    return {
+      success: true,
+      data: result,
+      message: 'User updated successfully',
+    };
   }
 }

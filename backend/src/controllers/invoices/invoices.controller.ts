@@ -33,9 +33,20 @@ export class InvoicesController {
 
   @Post()
   @HttpCode(HttpStatus.CREATED)
-  async create(@CurrentUser() user: RequestUser, @Body() dto: CreateInvoiceDto) {
-    const result = await this.createInvoiceService.execute(user.companyId, dto, user.id);
-    return { success: true, data: result, message: 'Invoice created successfully' };
+  async create(
+    @CurrentUser() user: RequestUser,
+    @Body() dto: CreateInvoiceDto,
+  ) {
+    const result = await this.createInvoiceService.execute(
+      user.companyId,
+      dto,
+      user.id,
+    );
+    return {
+      success: true,
+      data: result,
+      message: 'Invoice created successfully',
+    };
   }
 
   @Get()
@@ -51,7 +62,14 @@ export class InvoicesController {
     @Query('limit') limit?: number,
   ) {
     const result = await this.getInvoicesService.getAll(user.companyId, {
-      search, status, paymentMethod, customerId, startDate, endDate, page, limit,
+      search,
+      status,
+      paymentMethod,
+      customerId,
+      startDate,
+      endDate,
+      page,
+      limit,
     });
     return { success: true, ...result };
   }
@@ -71,9 +89,18 @@ export class InvoicesController {
   @Post('hold')
   async holdInvoice(
     @CurrentUser() user: RequestUser,
-    @Body() body: { cartData: { items: unknown[]; customerId?: string }; label?: string },
+    @Body()
+    body: {
+      cartData: { items: unknown[]; customerId?: string };
+      label?: string;
+    },
   ) {
-    const result = await this.holdInvoiceService.hold(user.companyId, user.id, body.cartData, body.label);
+    const result = await this.holdInvoiceService.hold(
+      user.companyId,
+      user.id,
+      body.cartData,
+      body.label,
+    );
     return { success: true, data: result, message: 'Invoice held' };
   }
 
@@ -95,7 +122,12 @@ export class InvoicesController {
     @Param('id') id: string,
     @Body('amount') amount: number,
   ) {
-    const result = await this.payCreditService.execute(user.companyId, id, amount, user.id);
+    const result = await this.payCreditService.execute(
+      user.companyId,
+      id,
+      amount,
+      user.id,
+    );
     return result;
   }
 }

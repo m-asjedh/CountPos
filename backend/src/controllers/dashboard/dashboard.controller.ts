@@ -35,7 +35,10 @@ export class DashboardController {
   constructor(private prisma: PrismaService) {}
 
   @Get('summary')
-  async getSummary(@CurrentUser() user: RequestUser, @Query('period') period = 'today') {
+  async getSummary(
+    @CurrentUser() user: RequestUser,
+    @Query('period') period = 'today',
+  ) {
     const { start, end } = getDateRange(period);
     const companyId = user.companyId;
 
@@ -50,7 +53,12 @@ export class DashboardController {
     ] = await Promise.all([
       this.prisma.invoice.aggregate({
         where: { companyId, createdAt: { gte: start, lte: end } },
-        _sum: { totalAmount: true, profit: true, paidAmount: true, balanceAmount: true },
+        _sum: {
+          totalAmount: true,
+          profit: true,
+          paidAmount: true,
+          balanceAmount: true,
+        },
         _count: { id: true },
       }),
       this.prisma.invoice.aggregate({
@@ -58,22 +66,37 @@ export class DashboardController {
         _sum: { balanceAmount: true },
       }),
       this.prisma.customer.count({ where: { companyId, isActive: true } }),
+      this.prisma.product
+        .count({
+          where: { companyId, approvalStatus: 'ACTIVE', isActive: true },
+        })
+        .then(async () => {
+          const products = await this.prisma.product.findMany({
+            where: {
+              companyId,
+              approvalStatus: 'ACTIVE',
+              isActive: true,
+              currentStock: { gt: 0 },
+            },
+            select: { currentStock: true, lowStockThreshold: true },
+          });
+          return products.filter((p) => p.currentStock <= p.lowStockThreshold)
+            .length;
+        }),
       this.prisma.product.count({
-        where: { companyId, approvalStatus: 'ACTIVE', isActive: true },
-      }).then(async () => {
-        const products = await this.prisma.product.findMany({
-          where: { companyId, approvalStatus: 'ACTIVE', isActive: true, currentStock: { gt: 0 } },
-          select: { currentStock: true, lowStockThreshold: true },
-        });
-        return products.filter((p) => p.currentStock <= p.lowStockThreshold).length;
+        where: { companyId, approvalStatus: 'OUT_OF_STOCK', isActive: true },
       }),
-      this.prisma.product.count({ where: { companyId, approvalStatus: 'OUT_OF_STOCK', isActive: true } }),
-      this.prisma.product.count({ where: { companyId, approvalStatus: 'PENDING_APPROVAL' } }),
+      this.prisma.product.count({
+        where: { companyId, approvalStatus: 'PENDING_APPROVAL' },
+      }),
       this.prisma.product.count({
         where: {
           companyId,
           isActive: true,
-          expiryDate: { gte: new Date(), lte: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) },
+          expiryDate: {
+            gte: new Date(),
+            lte: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+          },
         },
       }),
     ]);
@@ -97,17 +120,38 @@ export class DashboardController {
   }
 
   @Get('sales-trend')
-  async getSalesTrend(@CurrentUser() user: RequestUser, @Query('days') days = 30) {
+  async getSalesTrend(
+    @CurrentUser() user: RequestUser,
+    @Query('days') days = 30,
+  ) {
     const companyId = user.companyId;
     const startDate = new Date();
     startDate.setDate(startDate.getDate() - Number(days));
 
     const invoices = await this.prisma.invoice.findMany({
-      where: { companyId, createdAt: { gte: startDate }, status: { not: 'CANCELLED' } },
-      select: { totalAmount: true, profit: true, createdAt: true, paymentMethod: true },
+      where: {
+        companyId,
+        createdAt: { gte: startDate },
+        status: { not: 'CANCELLED' },
+      },
+      select: {
+        totalAmount: true,
+        profit: true,
+        createdAt: true,
+        paymentMethod: true,
+      },
     });
 
-    const grouped: Record<string, { date: string; sales: number; profit: number; cash: number; credit: number }> = {};
+    const grouped: Record<
+      string,
+      {
+        date: string;
+        sales: number;
+        profit: number;
+        cash: number;
+        credit: number;
+      }
+    > = {};
 
     for (const inv of invoices) {
       const date = inv.createdAt.toISOString().split('T')[0];
@@ -123,18 +167,29 @@ export class DashboardController {
       }
     }
 
-    const trend = Object.values(grouped).sort((a, b) => a.date.localeCompare(b.date));
+    const trend = Object.values(grouped).sort((a, b) =>
+      a.date.localeCompare(b.date),
+    );
     return { success: true, data: trend };
   }
 
   @Get('top-products')
-  async getTopProducts(@CurrentUser() user: RequestUser, @Query('period') period = 'month') {
+  async getTopProducts(
+    @CurrentUser() user: RequestUser,
+    @Query('period') period = 'month',
+  ) {
     const { start } = getDateRange(period);
     const companyId = user.companyId;
 
     const items = await this.prisma.invoiceItem.groupBy({
       by: ['productId', 'productName'],
-      where: { invoice: { companyId, createdAt: { gte: start }, status: { not: 'CANCELLED' } } },
+      where: {
+        invoice: {
+          companyId,
+          createdAt: { gte: start },
+          status: { not: 'CANCELLED' },
+        },
+      },
       _sum: { lineTotal: true, quantity: true, profit: true },
       orderBy: { _sum: { lineTotal: 'desc' } },
       take: 10,
@@ -150,6 +205,8 @@ export class DashboardController {
       include: {
         customer: { select: { id: true, name: true } },
         createdBy: { select: { firstName: true, lastName: true } },
+        items: { take: 1, orderBy: { lineTotal: 'desc' } },
+        _count: { select: { items: true } },
       },
       orderBy: { createdAt: 'desc' },
       take: 10,

@@ -1,8 +1,22 @@
-import { Controller, Get, Post, Patch, Body, Param, Query, UseGuards, HttpCode, HttpStatus } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Patch,
+  Body,
+  Param,
+  Query,
+  UseGuards,
+  HttpCode,
+  HttpStatus,
+} from '@nestjs/common';
 import { JwtAuthGuard } from '../../guards/jwt-auth.guard';
 import { RolesGuard } from '../../guards/roles.guard';
 import { CurrentUser } from '../../decorators/current-user.decorator';
-import { CreateCustomerDto, UpdateCustomerDto } from '../../dtos/customers/customer.dto';
+import {
+  CreateCustomerDto,
+  UpdateCustomerDto,
+} from '../../dtos/customers/customer.dto';
 import { PrismaService } from '../../prisma/prisma.service';
 import { RequestUser } from '../../types/auth.types';
 
@@ -13,7 +27,10 @@ export class CustomersController {
 
   @Post()
   @HttpCode(HttpStatus.CREATED)
-  async create(@CurrentUser() user: RequestUser, @Body() dto: CreateCustomerDto) {
+  async create(
+    @CurrentUser() user: RequestUser,
+    @Body() dto: CreateCustomerDto,
+  ) {
     const result = await this.prisma.customer.create({
       data: { companyId: user.companyId, ...dto },
     });
@@ -21,9 +38,13 @@ export class CustomersController {
   }
 
   @Get()
-  async getAll(@CurrentUser() user: RequestUser, @Query('search') search?: string) {
+  async getAll(
+    @CurrentUser() user: RequestUser,
+    @Query('search') search?: string,
+  ) {
     const where: Record<string, unknown> = {
-      companyId: user.companyId, isActive: true,
+      companyId: user.companyId,
+      isActive: true,
     };
     if (search) {
       where['OR'] = [
@@ -45,7 +66,13 @@ export class CustomersController {
       where: { id, companyId: user.companyId },
       include: {
         invoices: {
-          select: { id: true, invoiceNumber: true, totalAmount: true, status: true, createdAt: true },
+          select: {
+            id: true,
+            invoiceNumber: true,
+            totalAmount: true,
+            status: true,
+            createdAt: true,
+          },
           orderBy: { createdAt: 'desc' },
           take: 20,
         },
@@ -57,9 +84,18 @@ export class CustomersController {
   }
 
   @Patch(':id')
-  async update(@CurrentUser() user: RequestUser, @Param('id') id: string, @Body() dto: UpdateCustomerDto) {
-    await this.prisma.customer.updateMany({ where: { id, companyId: user.companyId }, data: dto });
-    const result = await this.prisma.customer.findFirst({ where: { id, companyId: user.companyId } });
+  async update(
+    @CurrentUser() user: RequestUser,
+    @Param('id') id: string,
+    @Body() dto: UpdateCustomerDto,
+  ) {
+    await this.prisma.customer.updateMany({
+      where: { id, companyId: user.companyId },
+      data: dto,
+    });
+    const result = await this.prisma.customer.findFirst({
+      where: { id, companyId: user.companyId },
+    });
     return { success: true, data: result };
   }
 
@@ -69,7 +105,9 @@ export class CustomersController {
     @Param('id') id: string,
     @Body('amount') amount: number,
   ) {
-    const customer = await this.prisma.customer.findFirst({ where: { id, companyId: user.companyId } });
+    const customer = await this.prisma.customer.findFirst({
+      where: { id, companyId: user.companyId },
+    });
     if (!customer) return { success: false, message: 'Customer not found' };
 
     const settleAmount = Math.min(amount, Number(customer.creditBalance));
@@ -92,6 +130,10 @@ export class CustomersController {
       }),
     ]);
 
-    return { success: true, message: 'Credit settled', data: { settledAmount: settleAmount, newBalance } };
+    return {
+      success: true,
+      message: 'Credit settled',
+      data: { settledAmount: settleAmount, newBalance },
+    };
   }
 }

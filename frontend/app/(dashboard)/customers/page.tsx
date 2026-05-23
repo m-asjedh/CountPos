@@ -197,6 +197,7 @@ function CustomerFormModal({ customer, onClose, onSaved }: { customer: Customer 
 }
 
 function SettleCreditModal({ customer, onClose, onSaved }: { customer: Customer; onClose: () => void; onSaved: () => void }) {
+  const { formatMoney } = useCompanySettings();
   const [amount, setAmount] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 

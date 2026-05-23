@@ -1,4 +1,13 @@
-import { Controller, Get, Post, Body, Query, UseGuards, HttpCode, HttpStatus } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Query,
+  UseGuards,
+  HttpCode,
+  HttpStatus,
+} from '@nestjs/common';
 import { JwtAuthGuard } from '../../guards/jwt-auth.guard';
 import { RolesGuard } from '../../guards/roles.guard';
 import { Roles } from '../../decorators/roles.decorator';
@@ -15,7 +24,10 @@ export class InventoryController {
   @Post('adjust')
   @Roles('OWNER', 'ADMIN', 'MANAGER')
   @HttpCode(HttpStatus.CREATED)
-  async adjust(@CurrentUser() user: RequestUser, @Body() dto: StockAdjustmentDto) {
+  async adjust(
+    @CurrentUser() user: RequestUser,
+    @Body() dto: StockAdjustmentDto,
+  ) {
     const product = await this.prisma.product.findFirst({
       where: { id: dto.productId, companyId: user.companyId },
     });
@@ -97,27 +109,42 @@ export class InventoryController {
       this.prisma.inventoryLog.count({ where }),
     ]);
 
-    return { success: true, data: logs, meta: { total, page: Number(page), limit: Number(limit) } };
+    return {
+      success: true,
+      data: logs,
+      meta: { total, page: Number(page), limit: Number(limit) },
+    };
   }
 
   @Get('alerts')
   async getAlerts(@CurrentUser() user: RequestUser) {
     const [lowStock, outOfStock, nearExpiry, expired] = await Promise.all([
+      this.prisma.product
+        .findMany({
+          where: {
+            companyId: user.companyId,
+            approvalStatus: 'ACTIVE',
+            isActive: true,
+            currentStock: { gt: 0 },
+          },
+          select: {
+            id: true,
+            name: true,
+            sku: true,
+            currentStock: true,
+            lowStockThreshold: true,
+            reorderLevel: true,
+          },
+        })
+        .then((products) =>
+          products.filter((p) => p.currentStock <= p.lowStockThreshold),
+        ),
       this.prisma.product.findMany({
         where: {
           companyId: user.companyId,
-          approvalStatus: 'ACTIVE',
+          approvalStatus: 'OUT_OF_STOCK',
           isActive: true,
-          currentStock: { gt: 0 },
         },
-        select: {
-          id: true, name: true, sku: true, currentStock: true, lowStockThreshold: true, reorderLevel: true,
-        },
-      }).then((products) =>
-        products.filter((p) => p.currentStock <= p.lowStockThreshold),
-      ),
-      this.prisma.product.findMany({
-        where: { companyId: user.companyId, approvalStatus: 'OUT_OF_STOCK', isActive: true },
         select: { id: true, name: true, sku: true, currentStock: true },
       }),
       this.prisma.product.findMany({
@@ -129,7 +156,13 @@ export class InventoryController {
             lte: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
           },
         },
-        select: { id: true, name: true, sku: true, expiryDate: true, currentStock: true },
+        select: {
+          id: true,
+          name: true,
+          sku: true,
+          expiryDate: true,
+          currentStock: true,
+        },
       }),
       this.prisma.product.findMany({
         where: {
@@ -137,7 +170,13 @@ export class InventoryController {
           isActive: true,
           expiryDate: { lt: new Date() },
         },
-        select: { id: true, name: true, sku: true, expiryDate: true, currentStock: true },
+        select: {
+          id: true,
+          name: true,
+          sku: true,
+          expiryDate: true,
+          currentStock: true,
+        },
       }),
     ]);
 

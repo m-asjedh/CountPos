@@ -34,7 +34,13 @@ export class ReportsController {
     const [summary, byCashMethod, byCreditMethod] = await Promise.all([
       this.prisma.invoice.aggregate({
         where,
-        _sum: { totalAmount: true, profit: true, paidAmount: true, balanceAmount: true, discountAmount: true },
+        _sum: {
+          totalAmount: true,
+          profit: true,
+          paidAmount: true,
+          balanceAmount: true,
+          discountAmount: true,
+        },
         _count: { id: true },
         _avg: { totalAmount: true },
       }),
@@ -60,8 +66,14 @@ export class ReportsController {
         totalDiscounts: Number(summary._sum.discountAmount || 0),
         totalInvoices: summary._count.id,
         avgOrderValue: Number(summary._avg.totalAmount || 0),
-        cashSales: { amount: Number(byCashMethod._sum.totalAmount || 0), count: byCashMethod._count.id },
-        creditSales: { amount: Number(byCreditMethod._sum.totalAmount || 0), count: byCreditMethod._count.id },
+        cashSales: {
+          amount: Number(byCashMethod._sum.totalAmount || 0),
+          count: byCashMethod._count.id,
+        },
+        creditSales: {
+          amount: Number(byCreditMethod._sum.totalAmount || 0),
+          count: byCreditMethod._count.id,
+        },
       },
     };
   }
@@ -69,16 +81,43 @@ export class ReportsController {
   @Get('products')
   @Roles('OWNER', 'ADMIN', 'MANAGER')
   async getProductsReport(@CurrentUser() user: RequestUser) {
-    const [total, active, pendingApproval, lowStock, outOfStock] = await Promise.all([
-      this.prisma.product.count({ where: { companyId: user.companyId, isActive: true } }),
-      this.prisma.product.count({ where: { companyId: user.companyId, approvalStatus: 'ACTIVE', isActive: true } }),
-      this.prisma.product.count({ where: { companyId: user.companyId, approvalStatus: 'PENDING_APPROVAL' } }),
-      this.prisma.product.findMany({
-        where: { companyId: user.companyId, approvalStatus: 'ACTIVE', isActive: true, currentStock: { gt: 0 } },
-        select: { currentStock: true, lowStockThreshold: true },
-      }).then((products) => products.filter((p) => p.currentStock <= p.lowStockThreshold).length),
-      this.prisma.product.count({ where: { companyId: user.companyId, approvalStatus: 'OUT_OF_STOCK' } }),
-    ]);
+    const [total, active, pendingApproval, lowStock, outOfStock] =
+      await Promise.all([
+        this.prisma.product.count({
+          where: { companyId: user.companyId, isActive: true },
+        }),
+        this.prisma.product.count({
+          where: {
+            companyId: user.companyId,
+            approvalStatus: 'ACTIVE',
+            isActive: true,
+          },
+        }),
+        this.prisma.product.count({
+          where: {
+            companyId: user.companyId,
+            approvalStatus: 'PENDING_APPROVAL',
+          },
+        }),
+        this.prisma.product
+          .findMany({
+            where: {
+              companyId: user.companyId,
+              approvalStatus: 'ACTIVE',
+              isActive: true,
+              currentStock: { gt: 0 },
+            },
+            select: { currentStock: true, lowStockThreshold: true },
+          })
+          .then(
+            (products) =>
+              products.filter((p) => p.currentStock <= p.lowStockThreshold)
+                .length,
+          ),
+        this.prisma.product.count({
+          where: { companyId: user.companyId, approvalStatus: 'OUT_OF_STOCK' },
+        }),
+      ]);
 
     return {
       success: true,
@@ -135,10 +174,20 @@ export class ReportsController {
     const customers = await this.prisma.customer.findMany({
       where: { companyId: user.companyId, creditBalance: { gt: 0 } },
       select: {
-        id: true, name: true, phone: true, email: true, creditBalance: true, creditLimit: true,
+        id: true,
+        name: true,
+        phone: true,
+        email: true,
+        creditBalance: true,
+        creditLimit: true,
         invoices: {
           where: { status: { in: ['PENDING', 'PARTIALLY_PAID'] } },
-          select: { id: true, invoiceNumber: true, balanceAmount: true, createdAt: true },
+          select: {
+            id: true,
+            invoiceNumber: true,
+            balanceAmount: true,
+            createdAt: true,
+          },
           orderBy: { createdAt: 'desc' },
           take: 5,
         },
@@ -198,7 +247,10 @@ export class ReportsController {
     ].join('\n');
 
     res.setHeader('Content-Type', 'text/csv');
-    res.setHeader('Content-Disposition', 'attachment; filename=sales-report.csv');
+    res.setHeader(
+      'Content-Disposition',
+      'attachment; filename=sales-report.csv',
+    );
     res.send(csvRows);
   }
 }

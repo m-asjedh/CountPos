@@ -148,6 +148,7 @@ export interface Invoice {
   notes?: string;
   items?: InvoiceItem[];
   payments?: Payment[];
+  _count?: { items: number };
   createdAt: string;
 }
 

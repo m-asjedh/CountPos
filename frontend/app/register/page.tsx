@@ -62,13 +62,13 @@ export default function RegisterPage() {
     <div className="min-h-screen bg-gradient-to-br from-primary/5 via-background to-background flex items-center justify-center p-4">
       <div className="w-full max-w-lg">
         {/* Logo */}
-        <div className="text-center mb-8">
+        <Link href="/landingpage" className="block text-center mb-8 hover:opacity-90 transition-opacity">
           <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-primary text-primary-foreground mb-4 shadow-lg">
             <ShoppingCart className="w-8 h-8" />
           </div>
           <h1 className="text-3xl font-bold text-foreground">CountPos</h1>
           <p className="text-muted-foreground mt-1">Set up your store in minutes</p>
-        </div>
+        </Link>
 
         <div className="bg-card rounded-2xl border border-border shadow-sm p-8">
           {/* Steps */}

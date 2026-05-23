@@ -1,10 +1,23 @@
-import { Controller, Get, Patch, Body, UseGuards, BadRequestException } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Patch,
+  Body,
+  UseGuards,
+  BadRequestException,
+} from '@nestjs/common';
 import { JwtAuthGuard } from '../../guards/jwt-auth.guard';
 import { RolesGuard } from '../../guards/roles.guard';
 import { Roles } from '../../decorators/roles.decorator';
 import { CurrentUser } from '../../decorators/current-user.decorator';
 import { PrismaService } from '../../prisma/prisma.service';
-import { IsString, IsOptional, IsBoolean, IsNumber, Min } from 'class-validator';
+import {
+  IsString,
+  IsOptional,
+  IsBoolean,
+  IsNumber,
+  Min,
+} from 'class-validator';
 import { Type } from 'class-transformer';
 import { RequestUser } from '../../types/auth.types';
 
@@ -24,7 +37,11 @@ class UpdateSettingsDto {
   @IsOptional() @Type(() => Number) @IsNumber() @Min(0) taxRate?: number;
   @IsOptional() @IsString() taxLabel?: string;
   @IsOptional() @IsString() invoicePrefix?: string;
-  @IsOptional() @Type(() => Number) @IsNumber() @Min(1) lowStockThreshold?: number;
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(1)
+  lowStockThreshold?: number;
   @IsOptional() @IsBoolean() requireApproval?: boolean;
   @IsOptional() @IsBoolean() allowStaffDiscount?: boolean;
   @IsOptional() @IsString() receiptFooter?: string;
@@ -50,7 +67,10 @@ export class CompaniesController {
 
   @Patch('profile')
   @Roles('OWNER', 'ADMIN')
-  async updateProfile(@CurrentUser() user: RequestUser, @Body() dto: UpdateCompanyDto) {
+  async updateProfile(
+    @CurrentUser() user: RequestUser,
+    @Body() dto: UpdateCompanyDto,
+  ) {
     const updated = await this.prisma.company.update({
       where: { id: user.companyId },
       data: dto,
@@ -68,13 +88,18 @@ export class CompaniesController {
 
   @Patch('settings')
   @Roles('OWNER', 'ADMIN')
-  async updateSettings(@CurrentUser() user: RequestUser, @Body() dto: UpdateSettingsDto) {
+  async updateSettings(
+    @CurrentUser() user: RequestUser,
+    @Body() dto: UpdateSettingsDto,
+  ) {
     if (dto.priceCodeWord !== undefined || dto.priceCodeDigits !== undefined) {
       const word = (dto.priceCodeWord ?? '').trim().toUpperCase();
       const digits = (dto.priceCodeDigits ?? '').trim();
       if (word || digits) {
         if (!word || !digits) {
-          throw new BadRequestException('Both price code word and digits are required when using price codes');
+          throw new BadRequestException(
+            'Both price code word and digits are required when using price codes',
+          );
         }
         if (word.length !== digits.length) {
           throw new BadRequestException(
@@ -82,10 +107,14 @@ export class CompaniesController {
           );
         }
         if (!/^[A-Z]+$/.test(word)) {
-          throw new BadRequestException('Price code word must contain only letters A–Z');
+          throw new BadRequestException(
+            'Price code word must contain only letters A–Z',
+          );
         }
         if (!/^\d+$/.test(digits)) {
-          throw new BadRequestException('Price code digits must contain only numbers 0–9');
+          throw new BadRequestException(
+            'Price code digits must contain only numbers 0–9',
+          );
         }
       }
     }
@@ -118,7 +147,11 @@ export class CompaniesController {
   async getAuditLogs(@CurrentUser() user: RequestUser) {
     const logs = await this.prisma.auditLog.findMany({
       where: { companyId: user.companyId },
-      include: { user: { select: { id: true, firstName: true, lastName: true, email: true } } },
+      include: {
+        user: {
+          select: { id: true, firstName: true, lastName: true, email: true },
+        },
+      },
       orderBy: { createdAt: 'desc' },
       take: 100,
     });

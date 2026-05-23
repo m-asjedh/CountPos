@@ -1,79 +1,237 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { memo, useCallback, useEffect, useState } from 'react';
 import { toast } from 'sonner';
-import { Building2, Settings2, Save, KeyRound } from 'lucide-react';
+import {
+  Building2,
+  Settings2,
+  Save,
+  KeyRound,
+  Receipt,
+  Shield,
+  Coins,
+  Percent,
+} from 'lucide-react';
 import api from '@/src/lib/api';
-import { buildPriceCodePreview } from '@/src/lib/utils';
+import { buildPriceCodePreview, cn } from '@/src/lib/utils';
 import { useCompanySettings } from '@/src/providers/company-settings-provider';
 import type { CompanySettings } from '@/src/types';
 
-function SettingsInputField({
+type CompanyForm = {
+  name: string;
+  email: string;
+  phone: string;
+  address: string;
+  website: string;
+};
+
+type SettingsFormState = {
+  currency: string;
+  currencySymbol: string;
+  taxEnabled: boolean;
+  taxRate: string;
+  taxLabel: string;
+  invoicePrefix: string;
+  lowStockThreshold: string;
+  requireApproval: boolean;
+  allowStaffDiscount: boolean;
+  receiptFooter: string;
+  timezone: string;
+  dateFormat: string;
+  priceCodeWord: string;
+  priceCodeDigits: string;
+};
+
+const defaultCompany: CompanyForm = {
+  name: '',
+  email: '',
+  phone: '',
+  address: '',
+  website: '',
+};
+
+const defaultSettings: SettingsFormState = {
+  currency: 'USD',
+  currencySymbol: '$',
+  taxEnabled: false,
+  taxRate: '0',
+  taxLabel: 'Tax',
+  invoicePrefix: 'INV',
+  lowStockThreshold: '10',
+  requireApproval: true,
+  allowStaffDiscount: true,
+  receiptFooter: '',
+  timezone: 'UTC',
+  dateFormat: 'MM/DD/YYYY',
+  priceCodeWord: '',
+  priceCodeDigits: '',
+};
+
+const SettingsField = memo(function SettingsField({
   label,
   value,
   onChange,
   type = 'text',
   placeholder = '',
+  hint,
+  className,
+  mono,
+  inputMode,
 }: {
   label: string;
-  value: string | number;
+  value: string;
   onChange: (v: string) => void;
   type?: string;
   placeholder?: string;
+  hint?: string;
+  className?: string;
+  mono?: boolean;
+  inputMode?: React.HTMLAttributes<HTMLInputElement>['inputMode'];
 }) {
   return (
-    <div>
-      <label className="block text-sm font-medium mb-1">{label}</label>
+    <div className={className}>
+      <label className="mb-1.5 block text-sm font-medium text-foreground">{label}</label>
       <input
         type={type}
+        inputMode={inputMode}
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
-        className="w-full px-3 py-2 border border-input rounded-lg bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+        className={cn(
+          'w-full rounded-xl border border-border bg-muted/30 px-4 py-2.5 text-sm text-foreground transition-colors placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20',
+          mono && 'font-mono',
+        )}
       />
+      {hint && <p className="mt-1.5 text-xs text-muted-foreground">{hint}</p>}
     </div>
   );
-}
+});
 
-function settingsPayload(form: Partial<CompanySettings>) {
+function settingsPayload(form: SettingsFormState) {
   return {
     currency: form.currency,
     currencySymbol: form.currencySymbol,
     taxEnabled: form.taxEnabled,
-    taxRate: Number.isFinite(Number(form.taxRate)) ? Number(form.taxRate) : 0,
+    taxRate: parseFloat(form.taxRate) || 0,
     taxLabel: form.taxLabel,
     invoicePrefix: form.invoicePrefix,
-    lowStockThreshold: form.lowStockThreshold,
+    lowStockThreshold: parseInt(form.lowStockThreshold, 10) || 0,
     requireApproval: form.requireApproval,
     allowStaffDiscount: form.allowStaffDiscount,
     receiptFooter: form.receiptFooter || null,
     timezone: form.timezone,
     dateFormat: form.dateFormat,
-    priceCodeWord: form.priceCodeWord?.trim() || null,
-    priceCodeDigits: form.priceCodeDigits?.trim() || null,
+    priceCodeWord: form.priceCodeWord.trim() || null,
+    priceCodeDigits: form.priceCodeDigits.trim() || null,
   };
+}
+
+function mapSettingsFromApi(s: CompanySettings): SettingsFormState {
+  return {
+    currency: s.currency,
+    currencySymbol: s.currencySymbol,
+    taxEnabled: s.taxEnabled,
+    taxRate: String(s.taxRate ?? 0),
+    taxLabel: s.taxLabel,
+    invoicePrefix: s.invoicePrefix,
+    lowStockThreshold: String(s.lowStockThreshold ?? 10),
+    requireApproval: s.requireApproval,
+    allowStaffDiscount: s.allowStaffDiscount,
+    receiptFooter: s.receiptFooter || '',
+    timezone: s.timezone,
+    dateFormat: s.dateFormat,
+    priceCodeWord: s.priceCodeWord || '',
+    priceCodeDigits: s.priceCodeDigits || '',
+  };
+}
+
+function SectionCard({
+  icon: Icon,
+  title,
+  description,
+  children,
+}: {
+  icon: React.ComponentType<{ className?: string }>;
+  title: string;
+  description?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
+      <div className="border-b border-border bg-muted/20 px-6 py-4">
+        <div className="flex items-start gap-3">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10">
+            <Icon className="h-5 w-5 text-primary" />
+          </div>
+          <div>
+            <h3 className="font-semibold text-foreground">{title}</h3>
+            {description && (
+              <p className="mt-0.5 text-sm text-muted-foreground">{description}</p>
+            )}
+          </div>
+        </div>
+      </div>
+      <div className="p-6">{children}</div>
+    </div>
+  );
+}
+
+function ToggleRow({
+  checked,
+  onChange,
+  title,
+  description,
+}: {
+  checked: boolean;
+  onChange: (v: boolean) => void;
+  title: string;
+  description: string;
+}) {
+  return (
+    <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-border bg-muted/20 p-4 transition-colors hover:bg-muted/40">
+      <input
+        type="checkbox"
+        checked={checked}
+        onChange={(e) => onChange(e.target.checked)}
+        className="mt-1 h-4 w-4 rounded border-border text-primary focus:ring-primary"
+      />
+      <div>
+        <p className="text-sm font-medium text-foreground">{title}</p>
+        <p className="mt-0.5 text-xs text-muted-foreground">{description}</p>
+      </div>
+    </label>
+  );
 }
 
 export default function SettingsPage() {
   const { refreshSettings } = useCompanySettings();
-  const [companyForm, setCompanyForm] = useState({ name: '', email: '', phone: '', address: '', website: '' });
-  const [settingsForm, setSettingsForm] = useState<Partial<CompanySettings>>({
-    currency: 'USD', currencySymbol: '$', taxEnabled: false, taxRate: 0, taxLabel: 'Tax',
-    invoicePrefix: 'INV', lowStockThreshold: 10, requireApproval: true, allowStaffDiscount: true,
-    receiptFooter: '', timezone: 'UTC', dateFormat: 'MM/DD/YYYY',
-    priceCodeWord: '', priceCodeDigits: '',
-  });
+  const [companyForm, setCompanyForm] = useState<CompanyForm>(defaultCompany);
+  const [settingsForm, setSettingsForm] = useState<SettingsFormState>(defaultSettings);
   const [codePreview, setCodePreview] = useState('');
   const [isLoadingCompany, setIsLoadingCompany] = useState(false);
   const [isLoadingSettings, setIsLoadingSettings] = useState(false);
+  const [loaded, setLoaded] = useState(false);
+
+  const patchCompany = useCallback((field: keyof CompanyForm, value: string) => {
+    setCompanyForm((prev) => ({ ...prev, [field]: value }));
+  }, []);
+
+  const patchSettings = useCallback(
+    (field: keyof SettingsFormState, value: string | boolean) => {
+      setSettingsForm((prev) => ({ ...prev, [field]: value }));
+    },
+    [],
+  );
 
   useEffect(() => {
-    const fetchData = async () => {
+    let cancelled = false;
+    (async () => {
       try {
         const [profileRes, settingsRes] = await Promise.all([
           api.get('/companies/profile'),
           api.get('/companies/settings'),
         ]);
+        if (cancelled) return;
         const company = profileRes.data.data;
         setCompanyForm({
           name: company.name || '',
@@ -84,31 +242,21 @@ export default function SettingsPage() {
         });
         const settings = settingsRes.data.data;
         if (settings) {
-          setSettingsForm({
-            currency: settings.currency,
-            currencySymbol: settings.currencySymbol,
-            taxEnabled: settings.taxEnabled,
-            taxRate: Number(settings.taxRate),
-            taxLabel: settings.taxLabel,
-            invoicePrefix: settings.invoicePrefix,
-            lowStockThreshold: settings.lowStockThreshold,
-            requireApproval: settings.requireApproval,
-            allowStaffDiscount: settings.allowStaffDiscount,
-            receiptFooter: settings.receiptFooter || '',
-            timezone: settings.timezone,
-            dateFormat: settings.dateFormat,
-            priceCodeWord: settings.priceCodeWord || '',
-            priceCodeDigits: settings.priceCodeDigits || '',
-          });
+          setSettingsForm(mapSettingsFromApi(settings));
         }
-      } catch { /* ignore */ }
+        setLoaded(true);
+      } catch {
+        if (!cancelled) setLoaded(true);
+      }
+    })();
+    return () => {
+      cancelled = true;
     };
-    fetchData();
   }, []);
 
   useEffect(() => {
     setCodePreview(
-      buildPriceCodePreview(settingsForm.priceCodeWord || '', settingsForm.priceCodeDigits || ''),
+      buildPriceCodePreview(settingsForm.priceCodeWord, settingsForm.priceCodeDigits),
     );
   }, [settingsForm.priceCodeWord, settingsForm.priceCodeDigits]);
 
@@ -132,197 +280,258 @@ export default function SettingsPage() {
       const res = await api.patch('/companies/settings', settingsPayload(settingsForm));
       const saved = res.data.data;
       if (saved) {
-        setSettingsForm({
-          currency: saved.currency,
-          currencySymbol: saved.currencySymbol,
-          taxEnabled: saved.taxEnabled,
-          taxRate: Number(saved.taxRate),
-          taxLabel: saved.taxLabel,
-          invoicePrefix: saved.invoicePrefix,
-          lowStockThreshold: saved.lowStockThreshold,
-          requireApproval: saved.requireApproval,
-          allowStaffDiscount: saved.allowStaffDiscount,
-          receiptFooter: saved.receiptFooter || '',
-          timezone: saved.timezone,
-          dateFormat: saved.dateFormat,
-          priceCodeWord: saved.priceCodeWord || '',
-          priceCodeDigits: saved.priceCodeDigits || '',
-        });
+        setSettingsForm(mapSettingsFromApi(saved));
       }
       await refreshSettings();
       toast.success('Settings saved');
     } catch (err: unknown) {
-      const msg = (err as { response?: { data?: { message?: string | string[] } } })?.response?.data?.message;
+      const msg = (err as { response?: { data?: { message?: string | string[] } } })?.response
+        ?.data?.message;
       toast.error(Array.isArray(msg) ? msg.join(', ') : msg || 'Failed to save settings');
     } finally {
       setIsLoadingSettings(false);
     }
   };
 
+  if (!loaded) {
+    return (
+      <div className="flex min-h-[40vh] items-center justify-center">
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+      </div>
+    );
+  }
+
+  const codeLengthsMatch =
+    settingsForm.priceCodeWord.length === settingsForm.priceCodeDigits.length;
+
   return (
-    <div className="space-y-6 max-w-3xl">
-      <div>
-        <h1 className="text-2xl font-bold">Settings</h1>
-        <p className="text-sm text-muted-foreground mt-1">Manage your store configuration</p>
+    <div className="mx-auto max-w-4xl space-y-6 pb-8">
+      <div className="rounded-2xl bg-linear-to-br from-indigo-500 via-indigo-600 to-violet-600 p-6 text-white md:p-8">
+        <h1 className="text-2xl font-bold md:text-3xl">Store settings</h1>
+        <p className="mt-2 max-w-xl text-sm text-indigo-100">
+          Company profile, currency, tax, POS rules, and import price codes — all in one place.
+        </p>
       </div>
 
-      {/* Company Profile */}
-      <div className="bg-card border border-border rounded-xl">
-        <div className="flex items-center gap-2 px-5 py-4 border-b border-border">
-          <Building2 className="w-4 h-4 text-primary" />
-          <h3 className="font-semibold">Company Profile</h3>
-        </div>
-        <form onSubmit={saveCompany} className="p-5 space-y-4">
-          <div className="grid grid-cols-2 gap-4">
-            <SettingsInputField label="Company Name" value={companyForm.name} onChange={(v) => setCompanyForm({ ...companyForm, name: v })} placeholder="My Store" />
-            <SettingsInputField label="Email" value={companyForm.email} onChange={(v) => setCompanyForm({ ...companyForm, email: v })} type="email" />
-            <SettingsInputField label="Phone" value={companyForm.phone} onChange={(v) => setCompanyForm({ ...companyForm, phone: v })} />
-            <SettingsInputField label="Website" value={companyForm.website} onChange={(v) => setCompanyForm({ ...companyForm, website: v })} />
+      <SectionCard
+        icon={Building2}
+        title="Company profile"
+        description="Your business details on invoices and reports"
+      >
+        <form onSubmit={saveCompany} className="space-y-5">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <SettingsField
+              label="Company name"
+              value={companyForm.name}
+              onChange={(v) => patchCompany('name', v)}
+              placeholder="My Store"
+            />
+            <SettingsField
+              label="Email"
+              type="email"
+              value={companyForm.email}
+              onChange={(v) => patchCompany('email', v)}
+            />
+            <SettingsField
+              label="Phone"
+              value={companyForm.phone}
+              onChange={(v) => patchCompany('phone', v)}
+              placeholder="+94 7X XXX XXXX"
+            />
+            <SettingsField
+              label="Website"
+              value={companyForm.website}
+              onChange={(v) => patchCompany('website', v)}
+              placeholder="https://"
+            />
           </div>
-          <SettingsInputField label="Address" value={companyForm.address} onChange={(v) => setCompanyForm({ ...companyForm, address: v })} />
-          <div className="flex justify-end">
-            <button type="submit" disabled={isLoadingCompany} className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 disabled:opacity-50 transition-all">
-              <Save className="w-4 h-4" /> {isLoadingCompany ? 'Saving...' : 'Save Profile'}
+          <SettingsField
+            label="Address"
+            value={companyForm.address}
+            onChange={(v) => patchCompany('address', v)}
+            placeholder="Street, city, country"
+          />
+          <div className="flex justify-end border-t border-border pt-4">
+            <button
+              type="submit"
+              disabled={isLoadingCompany}
+              className="inline-flex items-center gap-2 rounded-xl bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground shadow-md shadow-primary/20 hover:bg-primary/90 disabled:opacity-50"
+            >
+              <Save className="h-4 w-4" />
+              {isLoadingCompany ? 'Saving…' : 'Save profile'}
             </button>
           </div>
         </form>
-      </div>
+      </SectionCard>
 
-      {/* Store Settings */}
-      <div className="bg-card border border-border rounded-xl">
-        <div className="flex items-center gap-2 px-5 py-4 border-b border-border">
-          <Settings2 className="w-4 h-4 text-primary" />
-          <h3 className="font-semibold">Store Settings</h3>
-        </div>
-        <form onSubmit={saveSettings} className="p-5 space-y-5">
+      <SectionCard
+        icon={Settings2}
+        title="Store configuration"
+        description="Currency, tax, inventory alerts, and staff permissions"
+      >
+        <form onSubmit={saveSettings} className="space-y-8">
           <div>
-            <h4 className="text-sm font-medium text-muted-foreground uppercase tracking-wide mb-3">Currency</h4>
-            <div className="grid grid-cols-3 gap-4">
-              <SettingsInputField label="Currency Code" value={settingsForm.currency || 'USD'} onChange={(v) => setSettingsForm({ ...settingsForm, currency: v })} placeholder="USD" />
-              <SettingsInputField label="Currency Symbol" value={settingsForm.currencySymbol ?? ''} onChange={(v) => setSettingsForm({ ...settingsForm, currencySymbol: v })} placeholder="Rs, $, €" />
-              <SettingsInputField label="Invoice Prefix" value={settingsForm.invoicePrefix || 'INV'} onChange={(v) => setSettingsForm({ ...settingsForm, invoicePrefix: v })} placeholder="INV" />
+            <div className="mb-4 flex items-center gap-2">
+              <Coins className="h-4 w-4 text-primary" />
+              <h4 className="text-sm font-semibold text-foreground">Currency & invoices</h4>
+            </div>
+            <div className="grid gap-4 sm:grid-cols-3">
+              <SettingsField
+                label="Currency code"
+                value={settingsForm.currency}
+                onChange={(v) => patchSettings('currency', v.toUpperCase())}
+                placeholder="LKR"
+              />
+              <SettingsField
+                label="Currency symbol"
+                value={settingsForm.currencySymbol}
+                onChange={(v) => patchSettings('currencySymbol', v)}
+                placeholder="Rs"
+              />
+              <SettingsField
+                label="Invoice prefix"
+                value={settingsForm.invoicePrefix}
+                onChange={(v) => patchSettings('invoicePrefix', v)}
+                placeholder="INV"
+              />
             </div>
           </div>
 
           <div>
-            <h4 className="text-sm font-medium text-muted-foreground uppercase tracking-wide mb-3">Tax</h4>
-            <div className="flex items-center gap-4 mb-3">
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input type="checkbox" checked={settingsForm.taxEnabled} onChange={(e) => setSettingsForm({ ...settingsForm, taxEnabled: e.target.checked })} className="rounded" />
-                <span className="text-sm">Enable tax on invoices</span>
-              </label>
+            <div className="mb-4 flex items-center gap-2">
+              <Percent className="h-4 w-4 text-primary" />
+              <h4 className="text-sm font-semibold text-foreground">Tax</h4>
             </div>
+            <ToggleRow
+              checked={settingsForm.taxEnabled}
+              onChange={(v) => patchSettings('taxEnabled', v)}
+              title="Enable tax on invoices"
+              description="Automatically add tax to POS totals and invoices"
+            />
             {settingsForm.taxEnabled && (
-              <div className="grid grid-cols-2 gap-4">
-                <SettingsInputField label="Tax Rate (%)" value={settingsForm.taxRate ?? 0} type="number" onChange={(v) => setSettingsForm({ ...settingsForm, taxRate: parseFloat(v) })} />
-                <SettingsInputField label="Tax Label" value={settingsForm.taxLabel || 'Tax'} onChange={(v) => setSettingsForm({ ...settingsForm, taxLabel: v })} />
+              <div className="mt-4 grid gap-4 sm:grid-cols-2">
+                <SettingsField
+                  label="Tax rate (%)"
+                  type="text"
+                  inputMode="decimal"
+                  value={settingsForm.taxRate}
+                  onChange={(v) => patchSettings('taxRate', v.replace(/[^\d.]/g, ''))}
+                  placeholder="15"
+                />
+                <SettingsField
+                  label="Tax label"
+                  value={settingsForm.taxLabel}
+                  onChange={(v) => patchSettings('taxLabel', v)}
+                  placeholder="VAT"
+                />
               </div>
             )}
           </div>
 
           <div>
-            <h4 className="text-sm font-medium text-muted-foreground uppercase tracking-wide mb-3">Operations</h4>
+            <div className="mb-4 flex items-center gap-2">
+              <Shield className="h-4 w-4 text-primary" />
+              <h4 className="text-sm font-semibold text-foreground">Operations</h4>
+            </div>
             <div className="space-y-3">
-              <label className="flex items-center gap-3 cursor-pointer">
-                <input type="checkbox" checked={settingsForm.requireApproval} onChange={(e) => setSettingsForm({ ...settingsForm, requireApproval: e.target.checked })} className="rounded" />
-                <div>
-                  <p className="text-sm font-medium">Require approval for staff-created products</p>
-                  <p className="text-xs text-muted-foreground">Products created by staff won&apos;t be visible in POS until approved</p>
-                </div>
-              </label>
-              <label className="flex items-center gap-3 cursor-pointer">
-                <input type="checkbox" checked={settingsForm.allowStaffDiscount} onChange={(e) => setSettingsForm({ ...settingsForm, allowStaffDiscount: e.target.checked })} className="rounded" />
-                <div>
-                  <p className="text-sm font-medium">Allow staff to apply discounts</p>
-                  <p className="text-xs text-muted-foreground">Staff can apply discounts within the configured product limits</p>
-                </div>
-              </label>
+              <ToggleRow
+                checked={settingsForm.requireApproval}
+                onChange={(v) => patchSettings('requireApproval', v)}
+                title="Require approval for staff-created products"
+                description="Staff products stay hidden in POS until a manager approves them"
+              />
+              <ToggleRow
+                checked={settingsForm.allowStaffDiscount}
+                onChange={(v) => patchSettings('allowStaffDiscount', v)}
+                title="Allow staff to apply discounts"
+                description="Discounts respect each product's maximum discount limit"
+              />
+            </div>
+            <div className="mt-4 max-w-xs">
+              <SettingsField
+                label="Low stock alert threshold"
+                type="text"
+                inputMode="numeric"
+                value={settingsForm.lowStockThreshold}
+                onChange={(v) => patchSettings('lowStockThreshold', v.replace(/\D/g, ''))}
+                hint="Notify when stock falls below this quantity"
+              />
             </div>
           </div>
 
-          <div>
-            <label className="block text-sm font-medium mb-1">Low Stock Alert Threshold</label>
-            <input type="number" min="0" value={settingsForm.lowStockThreshold ?? 10} onChange={(e) => setSettingsForm({ ...settingsForm, lowStockThreshold: parseInt(e.target.value) })} className="w-32 px-3 py-2 border border-input rounded-lg bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring" />
-            <p className="text-xs text-muted-foreground mt-1">Alert when stock falls below this number</p>
-          </div>
-
-          <div className="border border-border rounded-lg p-4 space-y-4 bg-muted/30">
-            <div className="flex items-center gap-2">
-              <KeyRound className="w-4 h-4 text-primary" />
-              <h4 className="text-sm font-medium">Price code words (import)</h4>
+          <div className="rounded-xl border border-border bg-muted/20 p-5">
+            <div className="mb-4 flex items-center gap-2">
+              <KeyRound className="h-4 w-4 text-primary" />
+              <h4 className="text-sm font-semibold text-foreground">Price code words (import)</h4>
             </div>
-            <p className="text-xs text-muted-foreground">
-              Map letters to digits for encoded prices in CSV/XLSX imports. Example: word{' '}
-              <span className="font-mono">BLACKSTONE</span> → digits{' '}
-              <span className="font-mono">1234567890</span>, so code <span className="font-mono">BL</span> = cost{' '}
-              <span className="font-mono">12</span>. Plain numbers like <span className="font-mono">10530/=</span> are
-              imported as-is.
+            <p className="mb-4 text-sm text-muted-foreground">
+              Map letters to digits for encoded prices in CSV/XLSX imports. Example:{' '}
+              <span className="font-mono text-foreground">BLACKSTONE</span> →{' '}
+              <span className="font-mono text-foreground">1234567890</span>, so{' '}
+              <span className="font-mono text-foreground">BL</span> decodes to cost{' '}
+              <span className="font-mono text-foreground">12</span>.
             </p>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium mb-1">Code word (letters)</label>
-                <input
-                  type="text"
-                  value={settingsForm.priceCodeWord || ''}
-                  onChange={(e) =>
-                    setSettingsForm({
-                      ...settingsForm,
-                      priceCodeWord: e.target.value.toUpperCase().replace(/[^A-Z]/g, ''),
-                    })
-                  }
-                  placeholder="BLACKSTONE"
-                  className="w-full px-3 py-2 border border-input rounded-lg bg-background text-sm font-mono focus:outline-none focus:ring-2 focus:ring-ring"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-1">Maps to (digits)</label>
-                <input
-                  type="text"
-                  value={settingsForm.priceCodeDigits || ''}
-                  onChange={(e) =>
-                    setSettingsForm({
-                      ...settingsForm,
-                      priceCodeDigits: e.target.value.replace(/[^\d]/g, ''),
-                    })
-                  }
-                  placeholder="1234567890"
-                  className="w-full px-3 py-2 border border-input rounded-lg bg-background text-sm font-mono focus:outline-none focus:ring-2 focus:ring-ring"
-                />
-              </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <SettingsField
+                label="Code word (letters)"
+                value={settingsForm.priceCodeWord}
+                onChange={(v) =>
+                  patchSettings('priceCodeWord', v.toUpperCase().replace(/[^A-Z]/g, ''))
+                }
+                placeholder="BLACKSTONE"
+                mono
+              />
+              <SettingsField
+                label="Maps to (digits)"
+                value={settingsForm.priceCodeDigits}
+                onChange={(v) => patchSettings('priceCodeDigits', v.replace(/[^\d]/g, ''))}
+                placeholder="1234567890"
+                mono
+              />
             </div>
             {(settingsForm.priceCodeWord || settingsForm.priceCodeDigits) && (
-              <p className="text-xs text-muted-foreground">
-                {settingsForm.priceCodeWord?.length === settingsForm.priceCodeDigits?.length ? (
-                  <>
-                    Length: {settingsForm.priceCodeWord?.length} characters. Preview:{' '}
+              <p className="mt-3 text-xs">
+                {codeLengthsMatch ? (
+                  <span className="text-muted-foreground">
+                    {settingsForm.priceCodeWord.length} characters · Preview:{' '}
                     <span className="font-mono text-foreground">{codePreview || 'BL → 12'}</span>
-                  </>
+                  </span>
                 ) : (
                   <span className="text-destructive">
                     Word and digits must be the same length (
-                    {settingsForm.priceCodeWord?.length ?? 0} vs {settingsForm.priceCodeDigits?.length ?? 0})
+                    {settingsForm.priceCodeWord.length} vs {settingsForm.priceCodeDigits.length})
                   </span>
                 )}
               </p>
             )}
-            <p className="text-xs text-muted-foreground">
-              Include every letter you use in imports (e.g. add X if your sheet uses codes like LXEX). Columns: Uni
-              Code, Product name, Quantity, Price, Discount.
-            </p>
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-1">Receipt Footer</label>
-            <textarea value={settingsForm.receiptFooter || ''} onChange={(e) => setSettingsForm({ ...settingsForm, receiptFooter: e.target.value })} placeholder="Thank you for your business!" rows={2} className="w-full px-3 py-2 border border-input rounded-lg bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring resize-none" />
+            <div className="mb-3 flex items-center gap-2">
+              <Receipt className="h-4 w-4 text-primary" />
+              <label className="text-sm font-semibold text-foreground">Receipt footer</label>
+            </div>
+            <textarea
+              value={settingsForm.receiptFooter}
+              onChange={(e) => patchSettings('receiptFooter', e.target.value)}
+              placeholder="Thank you for your business!"
+              rows={3}
+              className="w-full resize-none rounded-xl border border-border bg-muted/30 px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+            />
           </div>
 
-          <div className="flex justify-end">
-            <button type="submit" disabled={isLoadingSettings} className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 disabled:opacity-50 transition-all">
-              <Save className="w-4 h-4" /> {isLoadingSettings ? 'Saving...' : 'Save Settings'}
+          <div className="flex justify-end border-t border-border pt-4">
+            <button
+              type="submit"
+              disabled={isLoadingSettings}
+              className="inline-flex items-center gap-2 rounded-xl bg-linear-to-r from-indigo-500 to-indigo-600 px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-indigo-500/25 hover:from-indigo-600 hover:to-indigo-700 disabled:opacity-50"
+            >
+              <Save className="h-4 w-4" />
+              {isLoadingSettings ? 'Saving…' : 'Save settings'}
             </button>
           </div>
         </form>
-      </div>
+      </SectionCard>
     </div>
   );
 }
