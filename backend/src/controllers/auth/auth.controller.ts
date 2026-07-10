@@ -40,14 +40,14 @@ function getRefreshTokenFromRequest(req: Request): string | undefined {
 const accessCookieOptions = {
   httpOnly: true,
   secure: process.env.NODE_ENV === 'production',
-  sameSite: 'lax' as const,
+  sameSite: 'none' as const,
   maxAge: 15 * 60 * 1000,
 };
 
 const refreshCookieOptions = {
   httpOnly: true,
   secure: process.env.NODE_ENV === 'production',
-  sameSite: 'lax' as const,
+  sameSite: 'none' as const,
   maxAge: 7 * 24 * 60 * 60 * 1000,
 };
 
